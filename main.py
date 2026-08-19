@@ -1,12 +1,14 @@
 import math
 import os
 import shutil
+import uuid
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
 
 app = FastAPI(title="Backend Transcriptor KLP")
 
+# Permitir conexiones desde cualquier origen
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,15 +34,18 @@ def home():
 
 @app.post("/transcribir")
 async def transcribir_audio(file: UploadFile = File(...)):
-    temp_filename = f"temp_{file.filename}"
-    with open(temp_filename, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Generar un nombre único y seguro para el archivo temporal
+    extension = os.path.splitext(file.filename)[1] or ".mp3"
+    temp_filename = f"temp_{uuid.uuid4().hex}{extension}"
 
     try:
-        # Transcribir con Whisper y obtener la duración de la información del audio
+        # Guardar archivo subido en disco
+        with open(temp_filename, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Transcribir con Whisper y obtener la duración
         segmentos, info = modelo.transcribe(temp_filename, language="es")
         
-        # Whisper calcula la duración directamente en segundos
         duracion_minutos = info.duration / 60
         num_anuncios = calcular_anuncios(duracion_minutos)
 
@@ -57,5 +62,7 @@ async def transcribir_audio(file: UploadFile = File(...)):
         return {"exito": False, "error": str(e)}
 
     finally:
+        # Limpieza asegurada del archivo temporal
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
+            
