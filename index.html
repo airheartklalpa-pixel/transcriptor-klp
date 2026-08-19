@@ -100,7 +100,7 @@
       formData.append('file', input.files[0]);
 
       try {
-        const response = await fetch('http://127.0.0.1:8000/transcribir', {
+        const response = await fetch('https://transcriptor-klp-backend.onrender.com', {
           method: 'POST',
           body: formData
         });
