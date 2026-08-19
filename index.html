@@ -51,6 +51,12 @@
       border: 1px solid #ccc;
       padding: 10px;
     }
+    #cargando-msg {
+      display: none;
+      color: #007bff;
+      margin-top: 10px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -61,6 +67,8 @@
 
     <input type="file" id="audioInput" accept="audio/*, .mp3, .wav, .m4a, .aac, .ogg, .flac, .webm">
     <button class="btn" id="btnTranscribir" onclick="procesarTranscripcion()">Transcribir Audio</button>
+
+    <div id="cargando-msg">⏳ Procesando audio... Si es la primera vez en unos minutos, puede tardar ~45 segundos mientras inicia el servidor.</div>
 
     <!-- BLOQUE DE ANUNCIOS -->
     <div id="ads-box">
@@ -86,6 +94,7 @@
       const adsBox = document.getElementById('ads-box');
       const resultadoBox = document.getElementById('resultado');
       const textoResultado = document.getElementById('textoResultado');
+      const cargandoMsg = document.getElementById('cargando-msg');
 
       if (!input.files[0]) {
         alert("Por favor selecciona un archivo de audio primero.");
@@ -94,18 +103,21 @@
 
       btn.disabled = true;
       resultadoBox.style.display = 'none';
+      cargandoMsg.style.display = 'block';
       
-      // 1. Enviar el archivo a Python
+      // 1. Enviar el archivo a Render
       const formData = new FormData();
       formData.append('file', input.files[0]);
 
       try {
-        const response = await fetch('https://transcriptor-klp-backend.onrender.com', {
+        // CORREGIDO: Se añade /transcribir al final de la URL de Render
+        const response = await fetch('https://transcriptor-klp-backend.onrender.com/transcribir', {
           method: 'POST',
           body: formData
         });
 
         const data = await response.json();
+        cargandoMsg.style.display = 'none';
 
         if (data.exito) {
           // 2. Tomar los anuncios reales calculados por Python
@@ -132,12 +144,13 @@
           }, 1000);
 
         } else {
-          alert("Error desde el servidor: " + data.error);
+          alert("Error desde el servidor: " + (data.error || "Ocurrió un problema procesando el archivo"));
           btn.disabled = false;
         }
 
       } catch (error) {
-        alert("Error de conexión: Asegúrate de tener corriendo 'uvicorn main:app --reload' en PowerShell.");
+        cargandoMsg.style.display = 'none';
+        alert("Error de conexión con el servidor. El servidor en Render puede estar iniciando, intenta de nuevo en unos segundos.");
         console.error(error);
         btn.disabled = false;
       }
